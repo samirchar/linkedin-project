@@ -19,8 +19,8 @@ class LinkedinPeopleScraper:
     Class that scrapes all the persons in a linkedin search
     given a keyword and a location
     """
-    def __init__(self, keyword, username="samirchar@msn.com",
-                 password="samirufc20", location="Colombia"):
+    def __init__(self, keyword, username,
+                 password, location="Colombia"):
 
         self.keyword = keyword
         self.username = username
