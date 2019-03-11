@@ -7,13 +7,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, NoSuchElementException
 
-'''
-CURRENTLY I HAVE 2 ERRORS: 
-1) NOT ALL LINKS ARE LOADING.
-2) NOT SCRAPING EXPERIENCES WITH GROUPS FOR THE SAME COMPANY 
-'''
 class LinkedinPeopleScraper:
     """
     Class that scrapes all the persons in a linkedin search
@@ -49,7 +44,7 @@ class LinkedinPeopleScraper:
         mapping = {"Colombia":"co"}
         return mapping[self.location]
 
-    def infinite_scroller(self):
+    def infinite_scroller(self,slow = False):
         '''
         This function is used to scroll down to the bottom of a page with
         infinite scrolling
@@ -58,10 +53,10 @@ class LinkedinPeopleScraper:
 
         # Get scroll height
         last_height = self.driver.execute_script("return document.body.scrollHeight")
-
+        scroll_length = ("document.body.scrollHeight" if slow == False else 200)
         while True:
             # Scroll down to bottom
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            self.driver.execute_script("window.scrollBy(0, {});".format(scroll_length))
 
             # Wait to load page
             time.sleep(SCROLL_PAUSE_TIME)
@@ -85,7 +80,7 @@ class LinkedinPeopleScraper:
         self.driver.get(search_url)
 
         #Load all page by scrolling to bottom
-        self.infinite_scroller()
+        self.infinite_scroller(slow=True)
         
         time.sleep(5)
 
@@ -114,7 +109,7 @@ class LinkedinPeopleScraper:
                               By.XPATH,'//section[@class="pv-profile-section pv-interests-section artdeco-container-card ember-view"]')))
         time.sleep(3)
         
-        #Expand description box
+        #Expand description box2
         try:
             WebDriverWait(self.driver,10).until(
                                 EC.element_to_be_clickable((
@@ -136,7 +131,7 @@ class LinkedinPeopleScraper:
         try:
             self.driver.find_element_by_xpath(
                     '//li-icon[@class="pv-skills-section__chevron-icon"]').click()
-        except EC.NoSuchElementException:
+        except NoSuchElementException:
             pass
 
 
@@ -171,10 +166,17 @@ class LinkedinPeopleScraper:
         experience_list = []
 
         for job in experience_items:
-            experience_dict = dict.fromkeys(['job_title','company','date_range'])
-            experience_dict['job_title'] = job.find_element_by_tag_name("h3").text
-            experience_dict['company'] = job.find_element_by_xpath('.//span[@class="pv-entity__secondary-title"]').text
-            experience_dict['date_range'] = job.find_element_by_xpath('.//h4[@class="pv-entity__date-range t-14 t-black--light t-normal"]').text.split('\n')[1]
+            job.find_elements_by_xpath('.//ul[@class="pv-entity__position-group mt2"]')
+            if job:
+                temp=job.find_element_by_xpath('.//div[@class="pv-entity__company-summary-info"]').text.split('\n')
+                experience_dict['company'] = temp[1]
+                experience_dict['total_duration'] = temp[3]
+
+            else:  
+                experience_dict = dict.fromkeys(['job_title','company','date_range','total_duration'])
+                experience_dict['job_title'] = job.find_element_by_tag_name("h3").text
+                experience_dict['company'] = job.find_element_by_xpath('.//span[@class="pv-entity__secondary-title"]').text
+                experience_dict['date_range'] = job.find_element_by_xpath('.//h4[@class="pv-entity__date-range t-14 t-black--light t-normal"]').text.split('\n')[1]
             experience_list.append(experience_dict)
 
 
