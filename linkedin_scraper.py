@@ -166,14 +166,14 @@ class LinkedinPeopleScraper:
         experience_list = []
 
         for job in experience_items:
-            job.find_elements_by_xpath('.//ul[@class="pv-entity__position-group mt2"]')
-            if job:
+            experience_dict = dict.fromkeys(['job_title','company','date_range','total_duration'])
+            
+            if job.find_elements_by_xpath('.//ul[@class="pv-entity__position-group mt2"]'):
                 temp=job.find_element_by_xpath('.//div[@class="pv-entity__company-summary-info"]').text.split('\n')
                 experience_dict['company'] = temp[1]
                 experience_dict['total_duration'] = temp[3]
 
             else:  
-                experience_dict = dict.fromkeys(['job_title','company','date_range','total_duration'])
                 experience_dict['job_title'] = job.find_element_by_tag_name("h3").text
                 experience_dict['company'] = job.find_element_by_xpath('.//span[@class="pv-entity__secondary-title"]').text
                 experience_dict['date_range'] = job.find_element_by_xpath('.//h4[@class="pv-entity__date-range t-14 t-black--light t-normal"]').text.split('\n')[1]
