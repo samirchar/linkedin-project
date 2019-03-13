@@ -2,12 +2,15 @@
 
 import time
 import numpy as np
+import pandas as pd
+import json
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
 
 class LinkedinPeopleScraper:
     """
@@ -44,28 +47,43 @@ class LinkedinPeopleScraper:
         mapping = {"Colombia":"co"}
         return mapping[self.location]
 
-    def infinite_scroller(self,slow = False):
+    def infinite_scroller(self,speed = 'fast'):
         '''
         This function is used to scroll down to the bottom of a page with
         infinite scrolling
         '''
-        SCROLL_PAUSE_TIME = 0.5
-
-        # Get scroll height
-        last_height = self.driver.execute_script("return document.body.scrollHeight")
-        scroll_length = ("document.body.scrollHeight" if slow == False else 200)
+        SCROLL_PAUSE_TIME = 2
+        act = ActionChains(self.driver)
         while True:
-            # Scroll down to bottom
-            self.driver.execute_script("window.scrollBy(0, {});".format(scroll_length))
+            # Scroll down
+            if speed == 'fast':
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+            elif speed == 'slow':
+                self.driver.execute_script("window.scrollBy(0, 200)")
+            elif speed == 'medium':
+                act.send_keys(Keys.PAGE_DOWN).perform()
 
             # Wait to load page
             time.sleep(SCROLL_PAUSE_TIME)
 
-            # Calculate new scroll height and compare with last scroll height
-            new_height = self.driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
+            copyright_ = self.driver.find_elements_by_id('footer-copyright')
+
+            ATTEMPTS = 3
+            intent = 0
+            print('Checking if no more scrolls...')
+            for attempt in range(ATTEMPTS):
+                print('Attempt = {}'.format(attempt))
+                if copyright_:
+                    intent += 1
+                    print('Finished verifications = {}'.format(intent))
+                    time.sleep(1)
+                    copyright_ = self.driver.find_elements_by_id('footer-copyright')
+                else:
+                    break
+
+            if intent == ATTEMPTS:
+                print('Already at bottom of page!')
                 break
-            last_height = new_height
 
     def get_profile_links(self, page):
         '''
@@ -80,9 +98,9 @@ class LinkedinPeopleScraper:
         self.driver.get(search_url)
 
         #Load all page by scrolling to bottom
-        self.infinite_scroller(slow=True)
+        self.infinite_scroller(speed='slow')
         
-        time.sleep(5)
+        time.sleep(3)
 
         profile_links_items = WebDriverWait(self.driver,10).until(
                               EC.presence_of_all_elements_located((
@@ -100,7 +118,7 @@ class LinkedinPeopleScraper:
         all buttons needed so everything is expanded and full info is available.
         '''
         #First we need to scroll down to completely load the page
-        self.infinite_scroller()        
+        self.infinite_scroller(speed='medium')        
 
         #Last thing to load on a linkedin page is the interests box
         #So we know page if loaded when we can find this element. 
@@ -142,6 +160,7 @@ class LinkedinPeopleScraper:
 
         #Enter the profile link
         self.driver.get(profile_link)
+        time.sleep(2)
 
         #We expand everything we need to scrape
         self.expand_all()
@@ -154,8 +173,15 @@ class LinkedinPeopleScraper:
             '//h1[@class="pv-top-card-section__name inline t-24 t-black t-normal"]').text
         headline = self.driver.find_element_by_xpath(
         '//h2[@class="pv-top-card-section__headline mt1 t-18 t-black t-normal"]').text
-        description = self.driver.find_element_by_xpath(
-            '//div[@class="pv-top-card-section__summary pv-top-card-section__summary--with-content mt4 ember-view"]').find_element_by_tag_name('p').text
+        
+        description = None
+        try:
+            description_box = WebDriverWait(self.driver,5).until(
+                                    EC.presence_of_element_located((
+                                    By.XPATH,'//div[@class="pv-top-card-section__summary pv-top-card-section__summary--with-content mt4 ember-view"]')))
+            description = description_box.find_element_by_tag_name('p').text
+        except TimeoutException:
+            pass
 
         #Experience section
         experience_section = self.driver.find_element_by_id("experience-section") 
@@ -187,12 +213,19 @@ class LinkedinPeopleScraper:
         education_list = []
 
         for study in education_items:
-            education_dict = dict.fromkeys(['school_name','title_name','date_range'])
-            degree_info=study.find_element_by_xpath('.//div[@class="pv-entity__degree-info"]').text.split('\n')
-            education_dict['school_name'] = degree_info[0]
-            education_dict['title_name'] = degree_info[2]
-            education_dict['date_range'] = study.find_element_by_xpath('.//p[@class="pv-entity__dates t-14 t-black--light t-normal"]').text.split('\n')[1]
-            education_list.append(education_dict)
+            
+            degree_info_item = study.find_elements_by_xpath('.//div[@class="pv-entity__degree-info"]')
+            if degree_info_item:
+                education_dict = dict.fromkeys(['school_name','title_name','date_range'])
+                degree_info = degree_info_item[0].text.split('\n')
+                education_dict['school_name'] = degree_info[0]
+                if len(degree_info)>=3:
+                    education_dict['title_name'] = ','.join(degree_info[1:])
+                
+                date_item = study.find_elements_by_xpath('.//p[@class="pv-entity__dates t-14 t-black--light t-normal"]')
+                if date_item:
+                    education_dict['date_range'] = date_item[0].text.split('\n')[1]
+                education_list.append(education_dict)
         
         #Store everything in profile dictionary
         user_data['link'] = link
@@ -218,16 +251,26 @@ class LinkedinPeopleScraper:
 
 
     def main(self,pages):
+        '''
+        Method that runs the scraper a given number of pages. Currently, max number
+        of pages is 100 for a non-premium linkedin account
+        '''
 
         self.login()
-        for page in range(pages+1):
+        for page in range(1,pages+1):
             profile_links_in_page = self.get_profile_links(page)
             
             self.scrape_profiles(profile_links_in_page)
 
-            
-            
+    def to_json(self):
+        '''
+        writes a json with the scraping results
+        '''
+        with open('results_{}.json'.format(self.keyword).replace(' ','_'),'w') as output:
+            json.dump(json.dumps(self.data),output)
 
+            
+            
 
 
 
