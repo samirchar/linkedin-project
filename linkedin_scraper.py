@@ -12,6 +12,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 
+def read_json(file):
+    with open(file,'r') as f:
+        results=json.loads(json.load(f))
+    return results
+
+
 class LinkedinPeopleScraper:
     """
     Class that scrapes all the persons in a linkedin search
@@ -53,7 +59,7 @@ class LinkedinPeopleScraper:
         This function is used to scroll down to the bottom of a page with
         infinite scrolling
         '''
-        SCROLL_PAUSE_TIME = 2
+        SCROLL_PAUSE_TIME = 1
         act = ActionChains(self.driver)
         while True:
             # Scroll down
@@ -126,7 +132,6 @@ class LinkedinPeopleScraper:
         WebDriverWait(self.driver,10).until(
                               EC.presence_of_element_located((
                               By.XPATH,'//section[@class="pv-profile-section pv-interests-section artdeco-container-card ember-view"]')))
-        time.sleep(3)
         
         #Expand description box2
         try:
@@ -161,7 +166,6 @@ class LinkedinPeopleScraper:
 
         #Enter the profile link
         self.driver.get(profile_link)
-        time.sleep(2)
 
         #We expand everything we need to scrape
         self.expand_all()
@@ -195,7 +199,7 @@ class LinkedinPeopleScraper:
         for job in experience_items:
             experience_dict = dict.fromkeys(['job_title','company','date_range','total_duration'])
             
-            if job.find_elements_by_xpath('.//ul[@class="pv-entity__position-group mt2"]'):
+            if job.find_elements_by_xpath('.//ul[contains(@class,"pv-entity__position-group")]'):
                 temp=job.find_element_by_xpath('.//div[@class="pv-entity__company-summary-info"]').text.split('\n')
                 experience_dict['company'] = temp[1]
                 experience_dict['total_duration'] = temp[3]
