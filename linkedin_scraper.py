@@ -26,6 +26,7 @@ class LinkedinPeopleScraper:
         self.location = location
         self.driver = webdriver.Firefox()
         self.data = []
+        self.wall_time = 0
 
     def login(self):
         '''
@@ -257,10 +258,14 @@ class LinkedinPeopleScraper:
         '''
 
         self.login()
+        start_time = time.time()
         for page in range(1,pages+1):
             profile_links_in_page = self.get_profile_links(page)
             
             self.scrape_profiles(profile_links_in_page)
+        end_time = time.time()
+        self.wall_time = (end_time - start_time)/60 #time to scrape x number of pages (in minutes)
+        print(self.wall_time)
 
     def to_json(self):
         '''
