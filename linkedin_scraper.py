@@ -1,6 +1,7 @@
 
 
 import time
+import os
 import numpy as np
 import pandas as pd
 import json
@@ -18,6 +19,13 @@ def read_json(file):
     return results
 
 
+def write_json(data,file_name):
+    '''
+    writes a json file of the given data
+    '''
+    with open(file_name,'w') as output:
+        json.dump(json.dumps(data),output)
+
 class LinkedinPeopleScraper:
     """
     Class that scrapes all the persons in a linkedin search
@@ -33,6 +41,12 @@ class LinkedinPeopleScraper:
         self.driver = webdriver.Firefox()
         self.data = []
         self.wall_time = 0
+
+        #Create a directory to save results if it doesnt exist
+        self.results_dir='results/{}'.format(self.keyword)
+        if not os.path.exists(self.results_dir):
+            os.makedirs(self.results_dir)
+        
 
     def login(self):
         '''
@@ -250,9 +264,14 @@ class LinkedinPeopleScraper:
         each link and scrapes everything.
         '''
         for link in profiles_links:
+            
+            link_id = list(filter(None,link.split('/')))[-1]
+            stored_profiles = os.listdir(self.results_dir)
 
-            user_data = self.get_profile_data(link)
-            self.data.append(user_data)
+            if '{}.json'.format(link_id) not in stored_profiles:
+                user_data = self.get_profile_data(link)
+                self.data.append(user_data)
+                write_json(user_data,'{}/{}.json'.format(self.results_dir,link_id))
 
 
     def main(self,pages):
@@ -260,7 +279,7 @@ class LinkedinPeopleScraper:
         Method that runs the scraper a given number of pages. Currently, max number
         of pages is 100 for a non-premium linkedin account
         '''
-
+        
         self.login()
         start_time = time.time()
         for page in range(1,pages+1):
@@ -271,16 +290,5 @@ class LinkedinPeopleScraper:
         self.wall_time = (end_time - start_time)/60 #time to scrape x number of pages (in minutes)
         print(self.wall_time)
 
-    def to_json(self):
-        '''
-        writes a json with the scraping results
-        '''
-        with open('results_{}.json'.format(self.keyword).replace(' ','_'),'w') as output:
-            json.dump(json.dumps(self.data),output)
 
             
-            
-
-
-
-
