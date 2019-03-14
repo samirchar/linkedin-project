@@ -78,7 +78,7 @@ class LinkedinPeopleScraper:
         This method enters linkedin with a given username and password
         '''
         self.driver.get("https://linkedin.com")
-        username_item = self.driver.find_element_by_xpath(
+        username_item = self.drivemr.find_element_by_xpath(
             '//input[@id="login-email"]')
         password_item = self.driver.find_element_by_xpath(
             '//input[@id="login-password"]')

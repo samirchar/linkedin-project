@@ -1,5 +1,0 @@
-selenium
-autopep8
-flatten_json
-Sphinx
-pprint

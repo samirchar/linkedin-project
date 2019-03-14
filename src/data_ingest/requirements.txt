@@ -1,0 +1,12 @@
+selenium
+autopep8
+flatten_json
+Sphinx
+pprint
+#apache-airflow
+scikit-learn
+numpy
+pytest
+pre-commit
+sphinx-rtd-theme
+numpydoc
