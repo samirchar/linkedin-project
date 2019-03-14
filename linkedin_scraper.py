@@ -12,6 +12,8 @@ of people that match that query in the specified location.
 import time
 import os
 import json
+import pandas as pd
+from flatten_json import flatten
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -30,7 +32,6 @@ def read_json(file):
         results = json.loads(json.load(input_))
     return results
 
-
 def write_json(data, file_name):
     '''
     writes a json file of the given data
@@ -38,7 +39,13 @@ def write_json(data, file_name):
     with open(file_name, 'w') as output:
         json.dump(json.dumps(data), output)
 
-
+def to_excel_batch(keyword):
+    files=os.listdir('results/{}'.format(keyword))
+    results = [read_json('results/CEO/{}'.format(i)) for i in files]
+    results = [flatten(i) for i in results]
+    df = pd.DataFrame(results)
+    return df
+    
 class LinkedinPeopleScraper:
     """
     Class that scrapes all the persons in a linkedin search
