@@ -29,7 +29,7 @@ def read_json(file):
     function that reads a json file
     '''
     with open(file, 'r') as input_:
-        results = json.loads(json.load(input_))
+        results = json.load(input_)
     return results
 
 def write_json(data, file_name):
@@ -37,15 +37,16 @@ def write_json(data, file_name):
     writes a json file of the given data
     '''
     with open(file_name, 'w') as output:
-        json.dump(json.dumps(data), output)
+        json.dump(data, output)
 
-def to_excel_batch(keyword):
-    files=os.listdir('results/{}'.format(keyword))
-    results = [read_json('results/CEO/{}'.format(i)) for i in files]
-    results = [flatten(i) for i in results]
+def json_to_df(file_name):
+    '''
+    '''
+    results=read_json(file_name)
+    results = [flatten(i) for i in results['data']]
     df = pd.DataFrame(results)
     return df
-    
+
 class LinkedinPeopleScraper:
     """
     Class that scrapes all the persons in a linkedin search
@@ -64,9 +65,13 @@ class LinkedinPeopleScraper:
         self.wall_time = 0
 
         # Create a directory to save results if it doesnt exist
-        self.results_dir = 'results/{}'.format(self.keyword)
+        self.results_dir = 'results'
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
+
+        template = {'ids':[],'data':[]}
+        with open('{}/{}.json'.format(self.results_dir,self.keyword), 'w') as json_data: 
+            json.dump(template, json_data)
 
     def login(self):
         '''
@@ -309,16 +314,19 @@ class LinkedinPeopleScraper:
         Given a list of links of Linkedin profiles, this method enters
         each link and scrapes everything.
         '''
+
+        stored_data = read_json('{}/{}.json'.format(self.results_dir,self.keyword))
+        stored_profiles_ids = stored_data['ids']
+
         for link in profiles_links:
-
             link_id = list(filter(None, link.split('/')))[-1]
-            stored_profiles = os.listdir(self.results_dir)
-
-            if '{}.json'.format(link_id) not in stored_profiles:
+            
+            if link_id not in stored_profiles_ids:
                 user_data = self.get_profile_data(link)
                 self.data.append(user_data)
-                write_json(
-                    user_data, '{}/{}.json'.format(self.results_dir, link_id))
+                stored_data['ids'].append(link_id)
+                stored_data['data'].append(user_data)
+                write_json(stored_data, '{}/{}.json'.format(self.results_dir,self.keyword))
 
     def main(self, pages):
         '''
