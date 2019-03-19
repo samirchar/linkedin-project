@@ -8,5 +8,8 @@ scikit-learn
 numpy
 pytest
 pre-commit
-sphinx-rtd-theme
+sphinx-rtd-themes
 numpydoc
+cookiecutter
+black
+pre-commit
